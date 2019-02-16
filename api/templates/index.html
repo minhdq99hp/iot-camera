@@ -1,0 +1,125 @@
+{% extends "bootstrap/base.html" %}
+{% block title %}IoT Camera{% endblock %}
+
+{% block styles %}
+{{super()}}
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+<link rel="stylesheet"
+	  href="https://use.fontawesome.com/releases/v5.6.3/css/all.css"
+	  integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/"
+	  crossorigin="anonymous">
+
+<link rel="stylesheet" href="{{url_for('.static', filename='vendor/fontawesome-free/css/all.css')}}" >
+<link rel="stylesheet" href="{{url_for('.static', filename='vendor/datatables/dataTables.bootstrap4.css')}}" >
+
+
+<link rel="stylesheet"
+	  href="{{url_for('.static', filename='css/custom_style.css')}}">
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+
+<script src="{{url_for('.static', filename='vendor/fontawesome-free/js/all.js')}}"></script>
+{% endblock %}
+
+{% block navbar %}
+<nav class="navbar navbar-expand-lg fixed-top navbar-light bg-lightgray" id="mainNav">
+		    <div class="container">
+		        <a class="navbar-brand js-scroll-trigger" href="/">IOT CAMERA
+		        </a>
+
+		        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+		          <span class="navbar-toggler-icon"></span>
+		        </button>
+
+				<div class="collapse navbar-collapse">
+					<span class="" id="tagline"> | PERSON DETECTING AND AGE/GENDER ESTIMATION TOOL</span>
+				</div>
+
+		        <div class="collapse navbar-collapse" id="navbarResponsive">
+			        <ul class="navbar-nav ml-auto">
+			            <li class="nav-item">
+			              	<a class="nav-link js-scroll-trigger" href="#about">Giới thiệu</a>
+			            </li>
+			            <li class="nav-item">
+			              	<a class="nav-link js-scroll-trigger" href="#contact">Liên hệ</a>
+			            </li>
+			        </ul>
+		        </div>
+		    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+		<div class="scrolltop rounded">
+		    <div class='scroll icon'><i class="fa fa-4x fa-angle-up"></i></div>
+		</div>
+		
+		
+		
+		<header class="text-black" style="margin-top:8em;">
+	      	<div class="container text-center">
+	        	<h1>IoT Camera</h1>
+	        	<p class="lead">Demo v1.0</p>
+	      	</div>
+	    </header>
+
+	    <div class="wrapper">
+	    	<div id="content-wrapper">
+	    			<div class="container">
+						<div class="row justify-content-center">
+							<div class="col-sm-12 col-lg-8 align-self-center">
+								<form action="{{ url_for('upload_data') }}" method="post" enctype="multipart/form-data">
+									<label for="fileInput">.jpg, .png, .mp4, .avi</label>
+									<input id="fileInput" name="fileInput" type="file" class="form-control" accept="video/*, image/*">
+									<input type="checkbox" name="output_json" value="output_json">Output in .json format<br>
+									<button class="btn btn-primary" type="submit">Upload</button>
+								</form>
+							</div>
+						</div>
+
+	    			</div>
+					<div class="container">
+						{{ resultImage }}
+					</div>
+	    	</div>
+
+			<!-- Footer -->
+			<footer class="page-footer font-small">
+
+			  <!-- Copyright -->
+			  <div class="footer-copyright text-center py-3">© 2019 Copyright:
+				<a href="https://facebook.com/minhdq99hp/"> Đặng Quang Minh</a>
+			  </div>
+			  <!-- Copyright -->
+
+			</footer>
+			<!-- Footer -->
+	    </div>	
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+	    <script src="{{url_for('.static', filename='js/sb-admin.min.js')}}"></script>
+
+	    <!--Back to Top Javascript-->
+  		<script>
+			$(window).scroll(function() {
+			  if ($(this).scrollTop() > 50) {
+			    $(".scrolltop:hidden")
+			      .stop(true, true)
+			      .fadeIn();
+			  } else {
+			    $(".scrolltop")
+			      .stop(true, true)
+			      .fadeOut();
+			  }
+			});
+			$(function() {
+			  $(".scroll").click(function() {
+			    $("html,body").animate({ scrollTop: $("html").offset().top }, "1000");
+			    return false;
+			  });
+			});
+  		</script>
+{% endblock %}
