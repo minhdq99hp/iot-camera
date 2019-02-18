@@ -276,7 +276,6 @@ class YOLO(object):
         text_left_bottom_origin = np.array([0, image.size[1]-draw.textsize(count_text, count_font)[1]])
         print(count_text)
 
-
         draw.rectangle([tuple(text_left_bottom_origin),
                         tuple(text_left_bottom_origin + draw.textsize(count_text, count_font))],
                        fill=(255, 255, 255))
@@ -284,7 +283,6 @@ class YOLO(object):
         draw.text(text_left_bottom_origin, count_text, fill=(0, 0, 0), font=count_font)
 
         del draw
-
 
         end = timer()
         print(end - start)

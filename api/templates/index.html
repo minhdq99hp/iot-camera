@@ -70,9 +70,10 @@
 						<div class="row justify-content-center">
 							<div class="col-sm-12 col-lg-8 align-self-center">
 								<form action="{{ url_for('upload_data') }}" method="post" enctype="multipart/form-data">
-									<label for="fileInput">.jpg, .png, .mp4, .avi</label>
-									<input id="fileInput" name="fileInput" type="file" class="form-control" accept="video/*, image/*">
-									<input type="checkbox" name="output_json" value="output_json">Output in .json format<br>
+									<label for="file_input">.jpg, .png, .mp4, .avi</label>
+									<input id="file_input" name="file_input" type="file" class="form-control" accept="video/*, image/*">
+									<input type="radio" name="output_type" value="output_json">Output in .json format<br>
+									<input type="radio" name="output_type" value="output_file">Output a file<br>
 									<button class="btn btn-primary" type="submit">Upload</button>
 								</form>
 							</div>
@@ -80,7 +81,7 @@
 
 	    			</div>
 					<div class="container">
-						{{ resultImage }}
+						{{ result_file }}
 					</div>
 	    	</div>
 
