@@ -12,8 +12,11 @@ def video_capture(*args, **kwargs):
     finally:
         cap.release()
 
+# TODO: add WEBCAM mode and methods
+
 
 class StreamMode(Enum):
+    WEBCAM = -1
     IMAGE = 0
     IMAGE_DIR = 1
     VIDEO = 2

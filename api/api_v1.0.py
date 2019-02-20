@@ -9,18 +9,19 @@ from PIL import Image
 import minh_custom_keras_yolo3.yolo as y
 import tensorflow as tf
 from frame_generator import FrameGenerator, StreamMode
-import pprint
+from urllib.request import urlopen
+import time
 
 import uuid
 import flask
-from flask import request, jsonify, render_template, send_from_directory, redirect
+from flask import Response, request, url_for, jsonify, render_template, send_from_directory, redirect
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
 
 # CONSTANT
 proceeded_data_path = "static/proceeded_data"
 uploaded_data_path = "static/uploaded_data"
-show_frame = False
+show_frame = True
 
 yolo = None
 graph = None
@@ -175,7 +176,6 @@ def clean_static_folder():
     if len(os.listdir(uploaded_data_path)) > 0:
         os.system(f'rm {os.path.join(uploaded_data_path, "*")}')
 
-
 print_header('LOADING FLASK APP')
 app = flask.Flask(__name__)
 Bootstrap(app)
@@ -233,16 +233,153 @@ def upload_data():
                 #                                           f'</video>'))
                 return redirect(output_file_path)
 
-# @app.route('/proceeded_data/<string:filename>', methods=['GET'])
-# def proceeded_data(filename):
-#     file_path = os.path.join(proceeded_data_path, filename)
-#
-#     if os.path.exists(file_path):
-#         return Markup('<img style="width=100%;" src="' + file_path + '"/>')
-#
-#     return "NOT YET !"
-#
-# @app.route('/rtsp')
+
+def proceed_rtsp():
+
+    return
+
+webcam = cv2.VideoCapture(0)
+
+
+def gen():
+    i = 0
+    img_id = str(uuid.uuid4())
+
+    while webcam.isOpened():
+        ret, frame = webcam.read()
+
+        if ret:
+            filename = f'{img_id}.jpg'
+            filepath = os.path.join(proceeded_data_path, filename)
+
+            detected, frame_info = detect_person(frame)
+
+            cv2.imwrite(filepath, detected)
+            i += 1
+
+            binary_file = open(filepath, 'rb').read()
+
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + binary_file + b'\r\n')
+
+        else:
+            print('WTF')
+            break
+
+
+def proceed_video_streaming(frame_generator, streaming_id):
+    filename = f'{streaming_id}.jpg'
+    filepath = os.path.join(proceeded_data_path, filename)
+
+
+    for frame in frame_generator.yield_frame():
+        detected, frame_info = detect_person(frame)
+
+        cv2.imwrite(filepath, detected)
+        if show_frame:
+            cv2.imshow("Frame", detected)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        binary_file = open(filepath, 'rb').read()
+
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + binary_file + b'\r\n')
+
+    cv2.destroyAllWindows()
+
+
+@app.route('/streaming', methods=['GET', 'POST'])
+def streaming():
+    if request.method == 'GET':
+        # CHECK WHETHER IF RTSP IS ALIVE
+        # url = request.args['rtsp']
+        #
+        # code = urlopen(url).getcode()
+        #
+        # if str(code).startswith(('2', '3')):  # 2xx or 3xx are considered success
+        #     print_header('RTSP IS WORKING')
+        # else:
+        #     print_header('RTSP IS DEAD')
+
+        # return Response(proceed_rtsp(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+        if 'streaming_id' in request.args:
+            # START STREAMING
+            print_header('START STREAMING')
+
+            streaming_id = request.args['streaming_id']
+
+            # GETTING UPLOADED FILE
+            filepath = ""
+            for p in os.listdir(uploaded_data_path):
+                if p.startswith(streaming_id):
+                    filepath = os.path.join(uploaded_data_path, p)
+                    break
+            if filepath == "":
+                raise Exception('Can\'t find the streaming file !')
+
+            frame_generator = FrameGenerator(StreamMode.VIDEO, filepath)
+
+            return Response(proceed_video_streaming(frame_generator, streaming_id),
+                            mimetype='multipart/x-mixed-replace; boundary=frame')
+
+        else:
+            # TEST ON WEBCAM
+            return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    elif request.method == 'POST':
+        print_header('A NEW REQUEST COMING !')
+        # GENERATING A NEW STREAMING ID
+        streaming_id = str(uuid.uuid4())
+
+        # GETTING DATA
+        print_header('GETTING DATA')
+        f = request.files['file_input']
+        filename = secure_filename(f.filename)
+        output_type = request.form.get("output_type")
+
+        # SAVE FILE TO LOCAL. Filename = streaming_id + extension
+        print_header('SAVE FILE TO LOCAL')
+        filepath = os.path.join(uploaded_data_path, f'{streaming_id}{os.path.splitext(filename)[1]}')
+        f.save(filepath)
+
+        # RETURN STREAMING_ID
+        return streaming_id
+
+        # # REDIRECT TO STREAMING PAGE
+        # return redirect(url_for('streaming', streaming_id=streaming_id))
+
+
+        # result = proceed(filename, output_type)
+        #
+        # output_file_path = os.path.join(proceeded_data_path, result['output_filename'])
+        #
+        # if output_type == 'output_file':  # RETURN PROCEEDED FILE
+        #     try:
+        #         print_header('RETURN PROCEEDED FILE')
+        #         # return send_file(output_file_path, attachment_filename=result["output_filename"])
+        #         return send_from_directory(proceeded_data_path, result['output_filename'])
+        #     except Exception as e:
+        #         print(e)
+        # elif output_type == 'output_json':  # RETURN JSON FILE
+        #     return jsonify(result)
+        #
+        # else:  # RETURN HTML PAGE
+        #     print_header('OUTPUT_HTML')
+        #     if output_file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+        #         # return render_template('index.html',
+        #         #                        result_file=Markup(f'<img class="img-fuild" '
+        #         #                                           f'style="max-width:100%; height:auto;" '
+        #         #                                           f'src="{output_file_path}" alt="Result">'))
+        #         return redirect(output_file_path)
+        #     elif output_file_path.lower().endswith(('.mp4', '.avi')):
+        #         # return render_template('index.html',
+        #         #                        result_file=Markup(f'<video style="max-width:100%; height:auto;" controls>'
+        #         #                                           f'<source src="{output_file_path}" type="video/mp4">'
+        #         #                                           f'Sorry, your browser doesn\'t support embedded videos.'
+        #         #                                           f'</video>'))
+        #         return redirect(output_file_path)
 
 
 if __name__ == "__main__":
