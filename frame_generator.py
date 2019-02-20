@@ -1,6 +1,7 @@
 import cv2
 from contextlib import contextmanager
 import os
+from enum import Enum
 
 
 @contextmanager
@@ -11,34 +12,53 @@ def video_capture(*args, **kwargs):
     finally:
         cap.release()
 
+# TODO: add WEBCAM mode and methods
+
+
+class StreamMode(Enum):
+    WEBCAM = -1
+    IMAGE = 0
+    IMAGE_DIR = 1
+    VIDEO = 2
+    RTSP = 3
+
 
 class FrameGenerator:
     def __init__(self, mode, input_path):
-        self.mode = mode # 0: image 1: folder of images 2: video 3:rtsp stream
+        self.mode = mode
         self.path = input_path
 
+        # SETUP IF IT IS VIDEO
+        if self.mode == StreamMode.VIDEO:
+            vid = cv2.VideoCapture(input_path)
+            self.vid_fps = vid.get(cv2.CAP_PROP_FPS)
+            self.vid_size = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+
+            if not vid.isOpened():
+                raise Exception(f"OpenCV can't open {input_path}")
+            vid.release()
+
     def yield_frame(self):
-        if self.mode == 0:
+        if self.mode == StreamMode.IMAGE:
             return self.yield_frame_from_image()
-        elif self.mode == 1:
+        elif self.mode == StreamMode.IMAGE_DIR:
             return self.yield_frame_from_image_dir()
-        elif self.mode == 2:
+        elif self.mode == StreamMode.VIDEO:
             return self.yield_frame_from_video()
-        elif self.mode == 3:
+        elif self.mode == StreamMode.RTSP:
             return self.yield_frame_from_rtsp()
 
     def yield_frame_from_image(self):
         yield cv2.imread(self.path)
-
 
     def yield_frame_from_video(self):
         with video_capture(self.path) as cap:
             while True:
                 ret, img = cap.read()
                 if ret:
-                    # raise RuntimeError("Failed to capture image")
                     yield img
                 else:
+                    # raise RuntimeError("Failed to capture image")
                     break
 
     def yield_frame_from_rtsp(self):
@@ -46,9 +66,9 @@ class FrameGenerator:
             while True:
                 ret, img = cap.read()
                 if ret:
-                    # raise RuntimeError("Failed to capture image")
                     yield img
                 else:
+                    # raise RuntimeError("Failed to capture image")
                     break
 
     def yield_frame_from_image_dir(self):
