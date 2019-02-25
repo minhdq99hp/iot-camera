@@ -38,7 +38,7 @@ The server will automatically run on port 5000
 
 POST Request:
 ```
-`curl -X POST -F "file_input=@[FILE_PATH]" -F "output_type=output_file" --output [OUTPUT_FILE_PATH] [BASE_URL]/upload_data`
+curl -X POST -F "file_input=@[FILE_PATH]" -F "output_type=output_file" --output [OUTPUT_FILE_PATH] [BASE_URL]/upload_data
 ```
 
 #### Streaming
@@ -46,7 +46,7 @@ Streaming your video online
 
 Upload video to the server:
 ```
-`curl -X POST -F "file_input=@[FILE_PATH]" https://817a9471.ngrok.io/streaming`
+curl -X POST -F "file_input=@[FILE_PATH]" https://817a9471.ngrok.io/streaming
 ```
 This will return you a `streaming_id`.
 
