@@ -1,38 +1,41 @@
 from frame_generator import *
 import cv2
+import sys
 
-path_2 = '/home/minhdq99hp/Desktop/1.mp4'
-path_1 = '/home/minhdq99hp/Desktop/pic/'
-path_0 = '/home/minhdq99hp/Desktop/pic/1.JPG'
+videopath = sys.argv[1]
+outputpath = '~/Desktop/output.avi'
 
+frameGenerator = FrameGenerator(StreamMode.VIDEO, videopath)
+fps = int(frameGenerator.vid_fps)
+size = frameGenerator.vid_size
+cc = int(frameGenerator.vid_cc)
 
-def yield_images():
-    # capture video
-    with video_capture(0) as cap:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+print(size)
 
-        while True:
-            # get video frame
-            ret, img = cap.read()
+width = 640
+height = width // 16 * 9
 
-            if not ret:
-                raise RuntimeError("Failed to capture image")
+print(cc)
 
-            yield img
-
-
-frameGenerator = FrameGenerator(2, path_2)
-
-# im = cv2.imread(path)
-# cv2.imshow("Show", im)
-# cv2.waitKey(0)
+outputVid = cv2.VideoWriter(outputpath, cc, fps, (width, height))
 
 for frame in frameGenerator.yield_frame():
+    frame = cv2.resize(frame, (width, height))
+
+    matrix = cv2.getRotationMatrix2D((width//2, height//2), -10, 1)
+
+    rotatedFrame = cv2.warpAffine(frame, matrix, (width, height), flags=cv2.INTER_LINEAR)
+
+    outputVid.write(rotatedFrame)
+
     cv2.imshow("Show", frame)
-    key = cv2.waitKey(30) # 30 FPS
-    if key == 27:
+    cv2.imshow("Rotated", rotatedFrame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+print('DONE !')
+
+outputVid.release()
 
 cv2.destroyAllWindows()
