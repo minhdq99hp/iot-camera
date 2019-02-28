@@ -12,8 +12,6 @@ def video_capture(*args, **kwargs):
     finally:
         cap.release()
 
-# TODO: add WEBCAM mode and methods
-
 
 class StreamMode(Enum):
     WEBCAM = -1
@@ -24,22 +22,40 @@ class StreamMode(Enum):
 
 
 class FrameGenerator:
-    def __init__(self, mode, input_path):
+    def __init__(self, mode, *args):
         self.mode = mode
-        self.path = input_path
+
 
         # SETUP IF IT IS VIDEO
         if self.mode == StreamMode.VIDEO:
-            vid = cv2.VideoCapture(input_path)
+            if len(args) > 0:
+                self.path = args[0]
+
+            vid = cv2.VideoCapture(self.path)
             self.vid_fps = vid.get(cv2.CAP_PROP_FPS)
             self.vid_size = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
             if not vid.isOpened():
-                raise Exception(f"OpenCV can't open {input_path}")
+                raise Exception(f"OpenCV can't open {self.path}")
             vid.release()
+        elif self.mode == StreamMode.RTSP:
+            if len(args) > 0:
+                self.path = args[0]
+            # CHECK WHETHER IF RTSP IS ALIVE
+            # url = request.args['rtsp']
+            #
+            # code = urlopen(url).getcode()
+            #
+            # if str(code).startswith(('2', '3')):  # 2xx or 3xx are considered success
+            #     print_header('RTSP IS WORKING')
+            # else:
+            #     print_header('RTSP IS DEAD')
+
 
     def yield_frame(self):
-        if self.mode == StreamMode.IMAGE:
+        if self.mode == StreamMode.WEBCAM:
+            return self.yield_frame_from_webcam()
+        elif self.mode == StreamMode.IMAGE:
             return self.yield_frame_from_image()
         elif self.mode == StreamMode.IMAGE_DIR:
             return self.yield_frame_from_image_dir()
@@ -48,27 +64,35 @@ class FrameGenerator:
         elif self.mode == StreamMode.RTSP:
             return self.yield_frame_from_rtsp()
 
+    @staticmethod
+    def yield_frame_from_webcam():
+        with video_capture(0) as cap:
+            while cap.isOpened():
+                ret, img = cap.read()
+                if ret:
+                    yield img
+                else:
+                    break
+
     def yield_frame_from_image(self):
         yield cv2.imread(self.path)
 
     def yield_frame_from_video(self):
         with video_capture(self.path) as cap:
-            while True:
+            while cap.isOpened():
                 ret, img = cap.read()
                 if ret:
                     yield img
                 else:
-                    # raise RuntimeError("Failed to capture image")
                     break
 
     def yield_frame_from_rtsp(self):
         with video_capture(self.path) as cap:
-            while True:
+            while cap.isOpened():
                 ret, img = cap.read()
                 if ret:
                     yield img
                 else:
-                    # raise RuntimeError("Failed to capture image")
                     break
 
     def yield_frame_from_image_dir(self):
@@ -76,7 +100,3 @@ class FrameGenerator:
             if file.lower().endswith(('.jpg', '.jpeg', '.png')):
                 file_path = self.path + file if self.path.endswith('/') else self.path + '/' + file
                 yield cv2.imread(file_path)
-
-
-
-
