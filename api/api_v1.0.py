@@ -9,12 +9,10 @@ from PIL import Image
 import minh_custom_keras_yolo3.yolo as y
 import tensorflow as tf
 from frame_generator import FrameGenerator, StreamMode
-from urllib.request import unquote
-import time
 
 import uuid
 import flask
-from flask import Response, request, url_for, jsonify, render_template, send_from_directory, redirect, json
+from flask import Response, request, jsonify, render_template, send_from_directory, redirect, json
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
 
@@ -92,41 +90,6 @@ def proceed(filename, output_type):
 
         output_file.release()
         cv2.destroyAllWindows()
-
-        # USING OFFICIAL SOLUTION
-        # vid = cv2.VideoCapture(input_path)
-        #
-        # fps = vid.get(cv2.CAP_PROP_FPS)
-        # size = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        #
-        # output_file = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, size)
-        #
-        # while vid.isOpened():
-        #     ret, frame = vid.read()
-        #     if ret:
-        #         detected, frame_info = detect_person(frame)
-        #
-        #         if show_frame:
-        #             cv2.imshow('detected', detected)
-        #
-        #         output_file.write(detected)
-        #
-        #         detection_info['frames'].append(frame_info)
-        #         detection_info['time_interval'] += frame_info['time_interval']
-        #         detection_info['count_frames'] += 1
-        #
-        #         if cv2.waitKey(1) & 0xFF == ord('q'):
-        #             break
-        #     else:
-        #         break
-        #
-        # output_file.release()
-        # vid.release()
-        # cv2.destroyAllWindows()
-
-        # END PROCESS
-
-
 
     return detection_info
 
@@ -277,13 +240,6 @@ def proceed_video_streaming(frame_generator, streaming_id):
 @app.route('/streaming', methods=['GET', 'POST'])
 def streaming():
     if request.method == 'GET':
-        # TEST RTSP. DELETE THIS PART WHEN DONE.
-
-        frame_generator = FrameGenerator(StreamMode.RTSP, 'http://127.0.0.1:8554')
-        streaming_id = '7ddc8ae0-f147-40da-81fd-28a72f79e6b3'
-        return Response(proceed_webcam_streaming(frame_generator, streaming_id),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
-        # END PART
 
         data = request.get_json()
         print(data)
@@ -293,6 +249,7 @@ def streaming():
             # TEST ON WEBCAM
             print_header('START STREAMING WEBCAM')
             frame_generator = FrameGenerator(StreamMode.WEBCAM)
+
         elif 'file_path' in data:
             streaming_id = data['streaming_id']
             # START STREAMING VIDEO
@@ -309,16 +266,23 @@ def streaming():
 
             frame_generator = FrameGenerator(StreamMode.VIDEO, filepath)
 
-        if 'rtsp_url' in request.args:
+        elif 'rtsp_url' in request.args:
+            print_header('START STREAMING RTSP')
+            rtsp_url = request.args.get('rtsp_url')
+
             streaming_id = request.args['streaming_id']
             # START STREAMING RTSP
-            print_header('START STREAMING RTSP')
-            rtsp_url = data['rtsp_url']
 
             frame_generator = FrameGenerator(StreamMode.RTSP, rtsp_url)
 
+        else:
+            streaming_id = str(uuid.uuid4())
+            frame_generator = FrameGenerator(StreamMode.WEBCAM)
 
-        return Response(proceed_webcam_streaming(frame_generator, streaming_id),
+            return Response(proceed_webcam_streaming(frame_generator, streaming_id),
+                            mimetype='multipart/x-mixed-replace; boundary=frame')
+
+        return Response(proceed_video_streaming(frame_generator, streaming_id),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
     elif request.method == 'POST':
