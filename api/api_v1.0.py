@@ -19,7 +19,7 @@ from werkzeug.utils import secure_filename
 # CONSTANT
 proceeded_data_path = "static/proceeded_data"
 uploaded_data_path = "static/uploaded_data"
-show_frame = True
+show_frame = False
 
 yolo = None
 graph = None
