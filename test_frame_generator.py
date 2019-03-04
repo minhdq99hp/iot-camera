@@ -3,7 +3,7 @@ import cv2
 import sys
 
 videopath = sys.argv[1]
-outputpath = '~/Desktop/output.avi'
+outputpath = sys.argv[2]
 
 frameGenerator = FrameGenerator(StreamMode.VIDEO, videopath)
 fps = int(frameGenerator.vid_fps)
@@ -18,18 +18,20 @@ height = width // 16 * 9
 print(cc)
 
 outputVid = cv2.VideoWriter(outputpath, cc, fps, (width, height))
-
+i = 0
 for frame in frameGenerator.yield_frame():
+    i += 1
+
     frame = cv2.resize(frame, (width, height))
 
-    matrix = cv2.getRotationMatrix2D((width//2, height//2), -10, 1)
+    # matrix = cv2.getRotationMatrix2D((width//2, height//2), -10, 1)
+    #
+    # rotatedFrame = cv2.warpAffine(frame, matrix, (width, height), flags=cv2.INTER_LINEAR)
 
-    rotatedFrame = cv2.warpAffine(frame, matrix, (width, height), flags=cv2.INTER_LINEAR)
-
-    outputVid.write(rotatedFrame)
-
-    cv2.imshow("Show", frame)
-    cv2.imshow("Rotated", rotatedFrame)
+    if i % 3 == 0:
+        outputVid.write(frame)
+        cv2.imshow("Show", frame)
+    # cv2.imshow("Rotated", rotatedFrame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
