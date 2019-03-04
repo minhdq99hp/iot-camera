@@ -4,8 +4,7 @@ sys.path.append('/home/minhdq99hp/iot-camera/minh_custom_keras_yolo3')
 
 import os
 import cv2
-import numpy as np
-from PIL import Image
+
 import minh_custom_keras_yolo3.yolo as y
 import tensorflow as tf
 from frame_generator import FrameGenerator, StreamMode
@@ -16,8 +15,12 @@ from flask import Response, request, jsonify, render_template, send_from_directo
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
 
+import api.api_utilities as api_util
+from api.api_utilities import print_header, pil_to_cv2, cv2_to_pil
+
+
 # CONSTANT
-proceeded_data_path = "static/proceeded_data"
+processed_data_path = "static/processed_data"
 uploaded_data_path = "static/uploaded_data"
 show_frame = False
 
@@ -25,25 +28,13 @@ yolo = None
 graph = None
 
 
-def print_header(s):
-    s = s.upper().strip()
-
-    len_header = 30
-
-    if len(s) >= len_header:
-        print(s)
-    else:
-        start_pos = len_header // 2 - len(s) // 2
-        print(f'\n+{"-" * start_pos}{s}{"-" * (len_header-start_pos-len(s))}+\n')
-
-
-def proceed(filename, output_type):
+def process(filename, output_type):
     # INPUT_PATH
     input_path = os.path.join(uploaded_data_path, filename)
 
     # OUTPUT_PATH
     output_filename = f'{str(uuid.uuid4())}_{filename}'
-    output_path = os.path.join(proceeded_data_path, output_filename)
+    output_path = os.path.join(processed_data_path, output_filename)
 
     # OUTPUT_INFO
     detection_info = {'frames': [],
@@ -53,19 +44,19 @@ def proceed(filename, output_type):
                       'output_filename': output_filename}
 
 
-    # PROCEED IMAGE
+    # process IMAGE
     if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
         input_img = cv2.imread(input_path)
 
-        detected, frame_info = detect_person(input_img)
+        detected, frame_info = yolo.detect_person_cv2(input_img)
 
-        cv2.imwrite(os.path.join(proceeded_data_path, output_filename), detected)
+        cv2.imwrite(os.path.join(processed_data_path, output_filename), detected)
 
         detection_info['frames'].append(frame_info)
         detection_info['count_frames'] += 1
         detection_info['time_interval'] += frame_info['time_interval']
 
-    # PROCEED VIDEO
+    # process VIDEO
     elif filename.lower().endswith(('.mp4', '.avi')):
         # USING FRAME GENERATOR
         frame_generator = FrameGenerator(StreamMode.VIDEO, input_path)
@@ -74,7 +65,7 @@ def proceed(filename, output_type):
                                       frame_generator.vid_fps, frame_generator.vid_size)
 
         for frame in frame_generator.yield_frame():
-            detected, frame_info = detect_person(frame)
+            detected, frame_info = yolo.detect_person_cv2(frame)
 
             if show_frame:
                 cv2.imshow('detected', detected)
@@ -108,20 +99,15 @@ def proceed(filename, output_type):
 # frames
 
 
-def detect_person(img):
-    # convert OpenCV Image to PIL Image
-    # cv2_im = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    pil_im = Image.fromarray(img)
-
-    with graph.as_default():
-        detected, detection_info = yolo.detect_person(pil_im)
-
-    # convert PIL Image to OpenCV Image
-    detected = np.asarray(detected)
-    # Convert RGB to BGR
-    # detected = detected[:, :, ::-1].copy()
-
-    return detected, detection_info
+# def yolo.detect_person_cv2(img):
+#     pil_im = cv2_to_pil(img)
+# 
+#     with graph.as_default():
+#         detected, detection_info = yolo.detect_person_cv2(pil_im)
+# 
+#     detected = pil_to_cv2(detected)
+# 
+#     return detected, detection_info
 
 
 def load_models():
@@ -133,8 +119,8 @@ def load_models():
 
 def clean_static_folder():
     # VERY DANGEROUS
-    if len(os.listdir(proceeded_data_path)) > 0:
-        os.system(f'rm {os.path.join(proceeded_data_path, "*")}')
+    if len(os.listdir(processed_data_path)) > 0:
+        os.system(f'rm {os.path.join(processed_data_path, "*")}')
 
     if len(os.listdir(uploaded_data_path)) > 0:
         os.system(f'rm {os.path.join(uploaded_data_path, "*")}')
@@ -164,17 +150,17 @@ def upload_data():
         filepath = os.path.join(uploaded_data_path, filename)
         f.save(filepath)
 
-        # PROCEED THE FILE
-        print_header('PROCEED FILE')
-        result = proceed(filename, output_type)
+        # process THE FILE
+        print_header('process FILE')
+        result = process(filename, output_type)
 
-        output_file_path = os.path.join(proceeded_data_path, result['output_filename'])
+        output_file_path = os.path.join(processed_data_path, result['output_filename'])
 
-        if output_type == 'output_file':  # RETURN PROCEEDED FILE
+        if output_type == 'output_file':  # RETURN processED FILE
             try:
-                print_header('RETURN PROCEEDED FILE')
+                print_header('RETURN processED FILE')
                 # return send_file(output_file_path, attachment_filename=result["output_filename"])
-                return send_from_directory(proceeded_data_path, result['output_filename'])
+                return send_from_directory(processed_data_path, result['output_filename'])
             except Exception as e:
                 print(e)
         elif output_type == 'output_json':  # RETURN JSON FILE
@@ -197,14 +183,14 @@ def upload_data():
                 return redirect(output_file_path)
 
 
-def proceed_webcam_streaming(frame_generator, streaming_id):
+def process_webcam_streaming(frame_generator, streaming_id):
 
     for frame in frame_generator.yield_frame():
 
         filename = f'{streaming_id}.jpg'
-        filepath = os.path.join(proceeded_data_path, filename)
+        filepath = os.path.join(processed_data_path, filename)
 
-        detected, frame_info = detect_person(frame)
+        detected, frame_info = yolo.detect_person_cv2(frame)
 
         cv2.imwrite(filepath, detected)
 
@@ -214,13 +200,13 @@ def proceed_webcam_streaming(frame_generator, streaming_id):
                b'Content-Type: image/jpeg\r\n\r\n' + binary_file + b'\r\n')
 
 
-def proceed_video_streaming(frame_generator, streaming_id):
+def process_video_streaming(frame_generator, streaming_id):
     filename = f'{streaming_id}.jpg'
-    filepath = os.path.join(proceeded_data_path, filename)
+    filepath = os.path.join(processed_data_path, filename)
 
 
     for frame in frame_generator.yield_frame():
-        detected, frame_info = detect_person(frame)
+        detected, frame_info = yolo.detect_person_cv2(frame)
 
         cv2.imwrite(filepath, detected)
         if show_frame:
@@ -279,10 +265,10 @@ def streaming():
             streaming_id = str(uuid.uuid4())
             frame_generator = FrameGenerator(StreamMode.WEBCAM)
 
-            return Response(proceed_webcam_streaming(frame_generator, streaming_id),
+            return Response(process_webcam_streaming(frame_generator, streaming_id),
                             mimetype='multipart/x-mixed-replace; boundary=frame')
 
-        return Response(proceed_video_streaming(frame_generator, streaming_id),
+        return Response(process_video_streaming(frame_generator, streaming_id),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
     elif request.method == 'POST':

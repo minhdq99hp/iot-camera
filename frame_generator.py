@@ -25,7 +25,6 @@ class FrameGenerator:
     def __init__(self, mode, *args, **kwargs):
         self.mode = mode
 
-
         # SETUP IF IT IS VIDEO
         if self.mode == StreamMode.VIDEO:
             if len(args) > 0:
@@ -35,10 +34,16 @@ class FrameGenerator:
             self.vid_fps = vid.get(cv2.CAP_PROP_FPS)
             self.vid_size = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
             self.vid_cc = vid.get(cv2.CAP_PROP_FOURCC)
+            self.total_frames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
+
 
             if not vid.isOpened():
-                raise Exception(f"OpenCV can't open {self.path}")
+                e = f"OpenCV can't open {self.path}"
+                raise Exception(e)
             vid.release()
+
+            self.cap = cv2.VideoCapture(self.path)
+
         elif self.mode == StreamMode.RTSP:
             if len(args) > 0:
                 self.path = args[0]
@@ -49,9 +54,11 @@ class FrameGenerator:
             self.vid_cc = vid.get(cv2.CAP_PROP_FOURCC)
 
             if not vid.isOpened():
-                raise Exception(f'OpenCV can\'t open {self.path}')
+                e = f"OpenCV can't open {self.path}"
+                raise Exception(e)
+            vid.release()
 
-
+            self.cap = cv2.VideoCapture(self.path)
             # CHECK WHETHER IF RTSP IS ALIVE
             # url = request.args['rtsp']
             #

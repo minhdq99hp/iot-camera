@@ -22,6 +22,7 @@ from PIL import Image, ImageFont, ImageDraw
 from minh_custom_keras_yolo3.yolo3.model import yolo_eval, yolo_body, tiny_yolo_body
 from minh_custom_keras_yolo3.yolo3.utils import letterbox_image
 from keras.utils import multi_gpu_model
+from PIL import Image
 
 # CONSTANT
 default_model_path = '/home/minhdq99hp/iot-camera/minh_custom_keras_yolo3/model_data/yolo.h5'
@@ -291,6 +292,13 @@ class YOLO(object):
         info["count_boxes"] = len(info['boxes'])
 
         return image, info
+
+    def detect_person_cv2(self, cv2_img):
+        pil_img = Image.fromarray(cv2_img)
+
+        detected, detection_info = self.detect_person(pil_img)
+
+        return np.asarray(detected), detection_info
 
     def close_session(self):
         self.sess.close()
