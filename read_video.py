@@ -7,8 +7,8 @@ import minh_custom_keras_yolo3.yolo as y
 import tensorflow as tf
 from datetime import timedelta
 
-yolo = y.YOLO()
-graph = tf.get_default_graph()
+# yolo = y.YOLO()
+# graph = tf.get_default_graph()
 
 from datetime import datetime
 
@@ -38,30 +38,31 @@ fieldnames = ['datetime', 'count']
 csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
 fps = vid.get(cv2.CAP_PROP_FPS)
-total_frames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
+total_frames = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
 
 print(fps)
 print(total_frames)
 
 while vid.isOpened():
     ret, frame = vid.read()
-    i += 1
-    print(i)
     if ret:
-        if i % fps = 0:
-            # frame = cv2.resize(frame, (width, height))
-            detected, detection_info = yolo.detect_person_cv2(frame)
+        i += 1
+        print(i)
+        frame = cv2.resize(frame, (width, height))
+        # detected, detection_info = yolo.detect_person_cv2(frame)
 
-            datetime_str = datetime_object.strftime('%d/%m/%Y %H:%M:%S')
-            datetime_object += timedelta(seconds=1)
+        # datetime_str = datetime_object.strftime('%d/%m/%Y %H:%M:%S')
 
-            # cv2.imshow("Show", detected)
+        # datetime_object += timedelta(seconds=1)
 
-            csv_writer.writerow([datetime_str, str(detection_info['count_boxes'])])
+        cv2.imshow("Show", frame)
+
+        # csv_writer.writerow([datetime_str, str(detection_info['count_boxes'])])
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     else:
         break
+
 
 csv_file.close()
 vid.release()
