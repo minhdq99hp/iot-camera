@@ -48,7 +48,7 @@ while vid.isOpened():
     i += 1
     print(i)
     if ret:
-        if i % fps = 0:
+        if i % fps == 0:
             # frame = cv2.resize(frame, (width, height))
             detected, detection_info = yolo.detect_person_cv2(frame)
 

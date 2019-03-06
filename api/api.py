@@ -14,6 +14,7 @@ import flask
 from flask import Response, request, jsonify, render_template, send_from_directory, redirect, json
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
+from celery import Celery
 
 import api.api_utilities as api_util
 from api.api_utilities import print_header, pil_to_cv2, cv2_to_pil
@@ -27,62 +28,74 @@ show_frame = False
 yolo = None
 graph = None
 
+print_header('LOADING FLASK APP')
+app = flask.Flask(__name__)
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
 
+celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+celery.config.update(app.config)
+
+Bootstrap(app)
+
+
+@celery.task(bind=True)
 def process(filename, output_type):
-    # INPUT_PATH
-    input_path = os.path.join(uploaded_data_path, filename)
+    with app.app_context():
+        # INPUT_PATH
+        input_path = os.path.join(uploaded_data_path, filename)
 
-    # OUTPUT_PATH
-    output_filename = f'{str(uuid.uuid4())}_{filename}'
-    output_path = os.path.join(processed_data_path, output_filename)
+        # OUTPUT_PATH
+        output_filename = f'{str(uuid.uuid4())}_{filename}'
+        output_path = os.path.join(processed_data_path, output_filename)
 
-    # OUTPUT_INFO
-    detection_info = {'frames': [],
-                      'time_interval': 0,
-                      'count_frames': 0,
-                      'output_path': output_path,
-                      'output_filename': output_filename}
+        # OUTPUT_INFO
+        detection_info = {'frames': [],
+                          'time_interval': 0,
+                          'count_frames': 0,
+                          'output_path': output_path,
+                          'output_filename': output_filename}
 
 
-    # process IMAGE
-    if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-        input_img = cv2.imread(input_path)
+        # process IMAGE
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            input_img = cv2.imread(input_path)
 
-        detected, frame_info = yolo.detect_person_cv2(input_img)
+            detected, frame_info = yolo.detect_person_cv2(input_img)
 
-        cv2.imwrite(os.path.join(processed_data_path, output_filename), detected)
-
-        detection_info['frames'].append(frame_info)
-        detection_info['count_frames'] += 1
-        detection_info['time_interval'] += frame_info['time_interval']
-
-    # process VIDEO
-    elif filename.lower().endswith(('.mp4', '.avi')):
-        # USING FRAME GENERATOR
-        frame_generator = FrameGenerator(StreamMode.VIDEO, input_path)
-
-        output_file = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'MJPG'),
-                                      frame_generator.vid_fps, frame_generator.vid_size)
-
-        for frame in frame_generator.yield_frame():
-            detected, frame_info = yolo.detect_person_cv2(frame)
-
-            if show_frame:
-                cv2.imshow('detected', detected)
-
-            output_file.write(detected)
+            cv2.imwrite(os.path.join(processed_data_path, output_filename), detected)
 
             detection_info['frames'].append(frame_info)
-            detection_info['time_interval'] += frame_info['time_interval']
             detection_info['count_frames'] += 1
+            detection_info['time_interval'] += frame_info['time_interval']
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        # process VIDEO
+        elif filename.lower().endswith(('.mp4', '.avi')):
+            # USING FRAME GENERATOR
+            frame_generator = FrameGenerator(StreamMode.VIDEO, input_path)
 
-        output_file.release()
-        cv2.destroyAllWindows()
+            output_file = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'MJPG'),
+                                          frame_generator.vid_fps, frame_generator.vid_size)
 
-    return detection_info
+            for frame in frame_generator.yield_frame():
+                detected, frame_info = yolo.detect_person_cv2(frame)
+
+                if show_frame:
+                    cv2.imshow('detected', detected)
+
+                output_file.write(detected)
+
+                detection_info['frames'].append(frame_info)
+                detection_info['time_interval'] += frame_info['time_interval']
+                detection_info['count_frames'] += 1
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+            output_file.release()
+            cv2.destroyAllWindows()
+
+        return detection_info
 
 # # detection_info (of a single frame):
 # time_interval
@@ -125,9 +138,7 @@ def clean_static_folder():
     if len(os.listdir(uploaded_data_path)) > 0:
         os.system(f'rm {os.path.join(uploaded_data_path, "*")}')
 
-print_header('LOADING FLASK APP')
-app = flask.Flask(__name__)
-Bootstrap(app)
+
 
 
 @app.route('/', methods=['GET'])
@@ -152,6 +163,9 @@ def upload_data():
 
         # process THE FILE
         print_header('process FILE')
+
+        # TODO: change this line using celery
+        # task = process.apply_async(args=[filename, output_type])
         result = process(filename, output_type)
 
         output_file_path = os.path.join(processed_data_path, result['output_filename'])
